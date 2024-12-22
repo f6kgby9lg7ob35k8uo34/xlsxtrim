@@ -40,14 +40,14 @@
 </head>
 <body>
     <div class="container">
-        <h1>CSV to XLSX Converter v1</h1>
+        <h1>CSV to XLSX Converter</h1>
         <input type="file" id="csvUploader" accept=".csv">
         <button id="convertButton">Convert and Download XLSX</button>
         <div class="output" id="outputMessage"></div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx-populate/0.13.3/xlsx-populate.min.js"></script>
     <script>
         document.getElementById('convertButton').addEventListener('click', () => {
             const csvFile = document.getElementById('csvUploader').files[0];
@@ -60,7 +60,7 @@
                 complete: (result) => {
                     const data = result.data;
 
-                    // Ensure the data starts at row 2 (index 1)
+                    // Process the CSV data and trim last 5 characters from column B starting from row 2
                     const modifiedData = data.map((row, index) => {
                         if (index > 0 && row[1]) { // Start from row 2 (index 1)
                             row[1] = row[1].slice(0, -5); // Trim the last 5 characters from column B
@@ -68,39 +68,41 @@
                         return row;
                     });
 
-                    // Create the new Excel file
-                    const ws = XLSX.utils.aoa_to_sheet(modifiedData);
-                    const wb = XLSX.utils.book_new();
-                    XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+                    // Create a new XLSX file using xlsx-populate
+                    XlsxPopulate.fromBlankAsync()
+                        .then(workbook => {
+                            const sheet = workbook.sheet(0);
 
-                    // Generate the XLSX file and trigger download
-                    const xlsxData = XLSX.write(wb, { bookType: 'xlsx', type: 'binary' });
+                            // Populate the sheet with the modified data
+                            modifiedData.forEach((row, rowIndex) => {
+                                row.forEach((cell, colIndex) => {
+                                    sheet.cell(rowIndex + 1, colIndex + 1).value(cell);
+                                });
+                            });
 
-                    // Create a blob for download
-                    const blob = new Blob([s2ab(xlsxData)], { type: 'application/octet-stream' });
-                    const link = document.createElement('a');
-                    link.href = URL.createObjectURL(blob);
-                    link.download = 'modified_data.xlsx';
-                    link.click();
+                            // Export the workbook to a blob
+                            return workbook.outputAsync();
+                        })
+                        .then(blob => {
+                            // Create a download link for the XLSX file
+                            const link = document.createElement('a');
+                            link.href = URL.createObjectURL(blob);
+                            link.download = 'modified_data.xlsx';
+                            link.click();
 
-                    // Show success message
-                    document.getElementById('outputMessage').textContent = 'Conversion complete! Downloading your file...';
+                            // Show success message
+                            document.getElementById('outputMessage').textContent = 'Conversion complete! Downloading your file...';
+                        })
+                        .catch(error => {
+                            console.error('Error creating XLSX file:', error);
+                            alert('An error occurred while creating the XLSX file.');
+                        });
                 },
                 error: (error) => {
                     alert('Error parsing the CSV file.');
                 }
             });
         });
-
-        // Helper function to convert a string to an array buffer
-        function s2ab(s) {
-            const buf = new ArrayBuffer(s.length);
-            const view = new Uint8Array(buf);
-            for (let i = 0; i < s.length; i++) {
-                view[i] = s.charCodeAt(i) & 0xFF;
-            }
-            return buf;
-        }
     </script>
 </body>
 </html>
