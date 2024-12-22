@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CSV to XLSX Converter with Trimming</title>
+    <title>XLSX Modifier</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -40,68 +40,60 @@
 </head>
 <body>
     <div class="container">
-        <h1>CSV to XLSX Converter</h1>
-        <input type="file" id="csvUploader" accept=".csv">
-        <button id="convertButton">Convert and Download XLSX</button>
+        <h1>Modify XLSX File</h1>
+        <input type="file" id="xlsxUploader" accept=".xlsx">
+        <button id="modifyButton">Modify and Download XLSX</button>
         <div class="output" id="outputMessage"></div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx-populate/0.13.3/xlsx-populate.min.js"></script>
     <script>
-        document.getElementById('convertButton').addEventListener('click', () => {
-            const csvFile = document.getElementById('csvUploader').files[0];
-            if (!csvFile) {
-                alert('Please upload a CSV file.');
+        document.getElementById('modifyButton').addEventListener('click', () => {
+            const xlsxFile = document.getElementById('xlsxUploader').files[0];
+            if (!xlsxFile) {
+                alert('Please upload an XLSX file.');
                 return;
             }
 
-            Papa.parse(csvFile, {
-                complete: (result) => {
-                    const data = result.data;
+            const reader = new FileReader();
 
-                    // Process the CSV data and trim last 5 characters from column B starting from row 2
-                    const modifiedData = data.map((row, index) => {
-                        if (index > 0 && row[1]) { // Start from row 2 (index 1)
-                            row[1] = row[1].slice(0, -5); // Trim the last 5 characters from column B
-                        }
-                        return row;
-                    });
+            reader.onload = function(event) {
+                // Load the file content into XlsxPopulate
+                XlsxPopulate.fromDataAsync(event.target.result)
+                    .then(workbook => {
+                        const sheet = workbook.sheet(0);
+                        const rows = sheet.usedRange().value(); // Get all the rows in the sheet
 
-                    // Create a new XLSX file using xlsx-populate
-                    XlsxPopulate.fromBlankAsync()
-                        .then(workbook => {
-                            const sheet = workbook.sheet(0);
-
-                            // Populate the sheet with the modified data
-                            modifiedData.forEach((row, rowIndex) => {
-                                row.forEach((cell, colIndex) => {
-                                    sheet.cell(rowIndex + 1, colIndex + 1).value(cell);
-                                });
-                            });
-
-                            // Export the workbook to a blob
-                            return workbook.outputAsync();
-                        })
-                        .then(blob => {
-                            // Create a download link for the XLSX file
-                            const link = document.createElement('a');
-                            link.href = URL.createObjectURL(blob);
-                            link.download = 'modified_data.xlsx';
-                            link.click();
-
-                            // Show success message
-                            document.getElementById('outputMessage').textContent = 'Conversion complete! Downloading your file...';
-                        })
-                        .catch(error => {
-                            console.error('Error creating XLSX file:', error);
-                            alert('An error occurred while creating the XLSX file.');
+                        // Process rows starting from row 2 (index 1) and modify column B
+                        rows.forEach((row, rowIndex) => {
+                            if (rowIndex > 0 && row[1]) { // Start from row 2 (index 1)
+                                row[1] = row[1].slice(0, -5); // Trim the last 5 characters from column B
+                            }
                         });
-                },
-                error: (error) => {
-                    alert('Error parsing the CSV file.');
-                }
-            });
+
+                        // Set the modified data back into the sheet
+                        sheet.usedRange().value(rows);
+
+                        // Export the modified XLSX file
+                        return workbook.outputAsync();
+                    })
+                    .then(blob => {
+                        // Create a download link for the modified XLSX file
+                        const link = document.createElement('a');
+                        link.href = URL.createObjectURL(blob);
+                        link.download = 'modified_file.xlsx';
+                        link.click();
+
+                        // Show success message
+                        document.getElementById('outputMessage').textContent = 'Modification complete! Downloading your file...';
+                    })
+                    .catch(error => {
+                        console.error('Error modifying XLSX file:', error);
+                        alert('An error occurred while modifying the file.');
+                    });
+            };
+
+            reader.readAsArrayBuffer(xlsxFile);
         });
     </script>
 </body>
