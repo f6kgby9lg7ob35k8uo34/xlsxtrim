@@ -40,7 +40,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>CSV to XLSX Converter</h1>
+        <h1>CSV to XLSX Converter v1</h1>
         <input type="file" id="csvUploader" accept=".csv">
         <button id="convertButton">Convert and Download XLSX</button>
         <div class="output" id="outputMessage"></div>
@@ -58,17 +58,15 @@
 
             Papa.parse(csvFile, {
                 complete: (result) => {
-                    // Process the CSV content
                     const data = result.data;
-                    const modifiedData = [];
 
-                    // Iterate through rows and trim the last 5 characters from column B (index 1)
-                    for (let i = 1; i < data.length; i++) {
-                        if (data[i][1]) { // Ensure there is a value in column B
-                            data[i][1] = data[i][1].slice(0, -5); // Trim the last 5 characters
+                    // Ensure the data starts at row 2 (index 1)
+                    const modifiedData = data.map((row, index) => {
+                        if (index > 0 && row[1]) { // Start from row 2 (index 1)
+                            row[1] = row[1].slice(0, -5); // Trim the last 5 characters from column B
                         }
-                        modifiedData.push(data[i]);
-                    }
+                        return row;
+                    });
 
                     // Create the new Excel file
                     const ws = XLSX.utils.aoa_to_sheet(modifiedData);
