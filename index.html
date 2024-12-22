@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV to XLSX Converter with Trimming</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            background-color: #f4f4f4;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+        .container {
+            text-align: center;
+        }
+        input[type="file"] {
+            margin: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .output {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CSV to XLSX Converter</h1>
+        <input type="file" id="csvUploader" accept=".csv">
+        <button id="convertButton">Convert and Download XLSX</button>
+        <div class="output" id="outputMessage"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        document.getElementById('convertButton').addEventListener('click', () => {
+            const csvFile = document.getElementById('csvUploader').files[0];
+            if (!csvFile) {
+                alert('Please upload a CSV file.');
+                return;
+            }
+
+            Papa.parse(csvFile, {
+                complete: (result) => {
+                    // Process the CSV content
+                    const data = result.data;
+                    const modifiedData = [];
+
+                    // Iterate through rows and trim the last 5 characters from column B (index 1)
+                    for (let i = 1; i < data.length; i++) {
+                        if (data[i][1]) { // Ensure there is a value in column B
+                            data[i][1] = data[i][1].slice(0, -5); // Trim the last 5 characters
+                        }
+                        modifiedData.push(data[i]);
+                    }
+
+                    // Create the new Excel file
+                    const ws = XLSX.utils.aoa_to_sheet(modifiedData);
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+
+                    // Generate the XLSX file and trigger download
+                    const xlsxData = XLSX.write(wb, { bookType: 'xlsx', type: 'binary' });
+
+                    // Create a blob for download
+                    const blob = new Blob([s2ab(xlsxData)], { type: 'application/octet-stream' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = 'modified_data.xlsx';
+                    link.click();
+
+                    // Show success message
+                    document.getElementById('outputMessage').textContent = 'Conversion complete! Downloading your file...';
+                },
+                error: (error) => {
+                    alert('Error parsing the CSV file.');
+                }
+            });
+        });
+
+        // Helper function to convert a string to an array buffer
+        function s2ab(s) {
+            const buf = new ArrayBuffer(s.length);
+            const view = new Uint8Array(buf);
+            for (let i = 0; i < s.length; i++) {
+                view[i] = s.charCodeAt(i) & 0xFF;
+            }
+            return buf;
+        }
+    </script>
+</body>
+</html>
